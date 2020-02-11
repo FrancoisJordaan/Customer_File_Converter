@@ -1,0 +1,22 @@
+{
+  "name": "customer_file_converter",
+  "version": "1.0.0",
+  "description": "Convert csv into JSON that's usable by an API",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/FrancoisJordaan/Customer_File_Converter.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/FrancoisJordaan/Customer_File_Converter/issues"
+  },
+  "homepage": "https://github.com/FrancoisJordaan/Customer_File_Converter#readme",
+  "dependencies": {
+    "csvtojson": "^2.0.10"
+  }
+}
