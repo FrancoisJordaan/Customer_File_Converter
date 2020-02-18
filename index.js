@@ -2,14 +2,15 @@ const path = require('path');
 const fs = require('fs');
 const csv = require('csvtojson');
 
-const convertCsvToObject = async () => {
+const inputFilePath = path.join(__dirname, 'ToConvert', 'BMOGAM_fundManagers.csv');
+const outputFilePath = path.join(__dirname, 'Converted', 'converted-data.json');
+const finalFilePath = path.join(__dirname, 'Converted', 'fundmanagersUpsert.json');
+
+const convertCsvToObject = async (inputFilePath, outputFilePath) => {
 	try {
-		const inputFilePath = path.join(__dirname, 'ToConvert', 'BMOGAM_fundManagers.csv');
-		const outputFilePath = path.join(__dirname, 'Converted', 'converted-data.json');
 		let stringObjectArray = await csv({delimiter: "|"}).fromFile(inputFilePath);
 
 		fs.writeFile(outputFilePath, JSON.stringify(stringObjectArray, null, 2), (err) => {
-			if (err) throw err;
 			console.log('File converted!');
 		})
 	} catch(err) {
@@ -17,12 +18,10 @@ const convertCsvToObject = async () => {
 	}
 }
 
-const refineData = async () => {
+
+const refineData = async (outputFilePath, finalFilePath) => {
 	try {
-		const outputFilePath = path.join(__dirname, 'Converted', 'converted-data.json');
-		const finalFilePath = path.join(__dirname, 'Converted', 'fundmanagersUpsert.json');
 		fs.readFile(outputFilePath, 'utf8', (err, data) => {
-		// if (err) throw err;
 			let refinedData = JSON.parse(data);
 			
 			for (let key in refinedData) {
@@ -42,9 +41,7 @@ const refineData = async () => {
 				}
 			}
 	
-			fs.writeFile(finalFilePath, JSON.stringify(refinedData, null, 2), (err) => {
-				if (err) throw err;
-			});
+			fs.writeFile(finalFilePath, JSON.stringify(refinedData, null, 2), (err) => {});
 
 		})
 	} catch(err) {
@@ -53,9 +50,9 @@ const refineData = async () => {
 	
 }
 
-const convertToJson = async () => {
-	await convertCsvToObject();
-	await refineData();
+const convertToJson = async (inputFilePath, outputFilePath, finalFilePath) => {
+	await convertCsvToObject(inputFilePath, outputFilePath);
+	await refineData(outputFilePath, finalFilePath);
 }
 
-convertToJson();
+convertToJson(inputFilePath, outputFilePath, finalFilePath);
