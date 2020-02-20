@@ -32,7 +32,12 @@ const refineData = async (outputFilePath, finalFilePath) => {
 					refinedData[key]['name'] = refinedData[key]['Name'];
 					delete refinedData[key]['Name'];
 					refinedData[key]['biography'] = [];
-					refinedData[key]['relatedEntities'] = refinedData[key]['Related Entities'].split(',');
+					refinedData[key]['Related Entities'] = refinedData[key]['Related Entities'].replace(/\s/g, '');
+					if(refinedData[key]['Related Entities'] == [""]){
+						refinedData[key]['relatedEntities'] = [];
+					} else{
+						refinedData[key]['relatedEntities'] = refinedData[key]['Related Entities'].split(',');
+					}
 					delete refinedData[key]['Related Entities'];
 					refinedData[key]['headshot'] = "";
 					refinedData[key]['headshotContentType'] = "image/jpeg";
