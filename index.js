@@ -1,63 +1,81 @@
 const path = require('path');
 const fs = require('fs');
 const csv = require('csvtojson');
+const image2base64 = require('image-to-base64');
+const fileNames = (fs.readdirSync(path.join(__dirname, 'ToConvert')));
 
-const inputFilePath = path.join(__dirname, 'ToConvert', 'BMOGAM_fundManagers.csv');
+// Retrieving fund manager csv containing data to be uploaded
+const fundManagerCsvfileName = fileNames.find(function (filename) {
+	if (filename.match(/BMOGAM_fundManagers_/g)) {
+		return filename;
+	}
+});
+
+console.log('CSV file to be converted: ' + fundManagerCsvfileName);
+
+const inputFilePath = path.join(__dirname, 'ToConvert', fundManagerCsvfileName);
 const outputFilePath = path.join(__dirname, 'Converted', 'converted-data.json');
-const finalFilePath = path.join(__dirname, 'Converted', 'fundmanagersUpsert.json');
+const finalFilePath = path.join(__dirname, 'Converted', 'fundManagersUpsert.json');
+const imageInputPath = path.join(__dirname, 'ToConvert');
 
-const convertCsvToObject = async (inputFilePath, outputFilePath) => {
+//converting fund manager csv to equivalent json
+const convertCsvToObject = async () => {
 	try {
-		let stringObjectArray = await csv({delimiter: "|"}).fromFile(inputFilePath);
-
+		let stringObjectArray = await csv({ delimiter: "|" }).fromFile(inputFilePath);
 		fs.writeFile(outputFilePath, JSON.stringify(stringObjectArray, null, 2), (err) => {
-			console.log('File converted!');
+			console.log('input csv converted to equivalent json');
+			refineData(0, stringObjectArray);
 		})
-	} catch(err) {
+	} catch (err) {
 		console.error(err);
 	}
 }
 
-
-const refineData = async (outputFilePath, finalFilePath) => {
-	try {
-		fs.readFile(outputFilePath, 'utf8', (err, data) => {
-			let refinedData = JSON.parse(data);
-			
-			for (let key in refinedData) {
-				if (refinedData.hasOwnProperty(key)) {
-					delete refinedData[key]['Image'];
-					refinedData[key]['code'] = refinedData[key]['Code'];
-					delete refinedData[key]['Code'];
-					refinedData[key]['name'] = refinedData[key]['Name'];
-					delete refinedData[key]['Name'];
-					refinedData[key]['biography'] = [];
-					refinedData[key]['Related Entities'] = refinedData[key]['Related Entities'].replace(/\s/g, '');
-					if(refinedData[key]['Related Entities'] == [""]){
-						refinedData[key]['relatedEntities'] = [];
-					} else{
-						refinedData[key]['relatedEntities'] = refinedData[key]['Related Entities'].split(',');
+//refining json data to expected payload for upsertFundManager Api call
+const refineData = async (index, fundManagerArray) => {
+	if (index < fundManagerArray.length) {
+		fundManagerArray[index]['code'] = fundManagerArray[index]['Code'];
+		fundManagerArray[index]['code'] = (fundManagerArray[index]['code']).replace(/[^a-zA-Z0-9-_]/g, "");
+		delete fundManagerArray[index]['Code'];
+		fundManagerArray[index]['name'] = fundManagerArray[index]['Name'];
+		delete fundManagerArray[index]['Name'];
+		fundManagerArray[index]['Related Entities'] = fundManagerArray[index]['Related Entities'].replace(/\s/g, '');
+		if (fundManagerArray[index]['Related Entities'] == [""]) {
+			fundManagerArray[index]['relatedEntities'] = [];
+		} else {
+			fundManagerArray[index]['relatedEntities'] = fundManagerArray[index]['Related Entities'].split(',');
+		}
+		delete fundManagerArray[index]['Related Entities'];
+		fundManagerArray[index]['extended'] = { 'title': fundManagerArray[index]['Title'] };
+		delete fundManagerArray[index]['Title'];
+		//fundManagerArray[index]['biography'] = [];
+		console.log('imageInputPath: ', fundManagerArray[index]['Image']);
+		console.log('file exists? ' + fs.existsSync(path.join(imageInputPath, fundManagerArray[index]['Image'])));
+		fundManagerArray[index]['headshotContentType'] = "image/jpeg";
+		if (fundManagerArray[index]['Image'] && (fs.existsSync(path.join(imageInputPath, fundManagerArray[index]['Image'])))) {
+			image2base64(path.join(imageInputPath, fundManagerArray[index]['Image']))
+				.then(
+					(response) => {
+						fundManagerArray[index]['headshot'] = response;
+						delete fundManagerArray[index]['Image'];
+						index++
+						refineData(index, fundManagerArray);
 					}
-					delete refinedData[key]['Related Entities'];
-					refinedData[key]['headshot'] = "";
-					refinedData[key]['headshotContentType'] = "image/jpeg";
-					refinedData[key]['extended'] = {'title': refinedData[key]['Title']};
-					delete refinedData[key]['Title'];
-				}
-			}
-	
-			fs.writeFile(finalFilePath, JSON.stringify(refinedData, null, 2), (err) => {});
-
-		})
-	} catch(err) {
-		console.error(err);
+				)
+				.catch(
+					(error) => {
+						console.log('ERROR WHILE CONVERTING TO BASE64: ', error); //Exepection error....
+					}
+				)
+		} else {
+			delete fundManagerArray[index]['Image'];
+			index++
+			refineData(index, fundManagerArray);
+		}
+	} else {
+		console.log('conversion to final json complete, writing to file: ' + finalFilePath);
+		fs.writeFile(finalFilePath, JSON.stringify(fundManagerArray, null, 2), (err) => { });
 	}
-	
 }
 
-const convertToJson = async (inputFilePath, outputFilePath, finalFilePath) => {
-	await convertCsvToObject(inputFilePath, outputFilePath);
-	await refineData(outputFilePath, finalFilePath);
-}
-
-convertToJson(inputFilePath, outputFilePath, finalFilePath);
+convertCsvToObject();
